@@ -1,0 +1,97 @@
+#include <thread>
+#include <iostream>
+#include "scheduler.hpp"
+
+Scheduler::Scheduler()=default;
+
+Scheduler::~Scheduler()=default;
+
+Scheduler& Scheduler::GetInstance(){
+    static Scheduler sche;
+    return sche;
+}
+
+void Scheduler::Start(int processer_num){
+    assert(processer_num > 0 && processers_.empty());
+
+    taskPool_=std::make_shared<TaskPool>();
+    ioEngine_=std::make_shared<io_uring_engine>();
+    
+    for (int i = 0; i < processer_num; ++i){
+        processers_.emplace_back(taskPool_);
+        processers_.back()->Start();
+    }
+
+    for(auto& tk:tempTasks_){
+        AddTask(tk);
+    }
+}
+
+void Scheduler::Stop(){
+    stop_ = true;
+}
+
+void Scheduler::AddTask(std::function<void()> func){
+    static uint64_t idx=0;
+    if (processers_.empty()){
+        tempTasks_.push_back(func);
+    }else if(auto proc=Processer::GetCurProcesser();proc!=nullptr){
+        proc->AddTask(func);
+    }else{
+        processers_[idx++%processers_.size()]->AddTask(func);
+    }
+}
+
+void Scheduler::AddTask(std::list<std::unique_ptr<Task>> &&tasks){
+    assert(!processers_.empty());
+    
+    static uint64_t idx=0;
+    processers_[idx++%processers_.size()]->AddTask(std::move(tasks));
+}
+
+void Scheduler::IOSubmit(std::unique_ptr<std::function<void(std::shared_ptr<io_uring_engine>)>> func){
+    ioQueue_.push(std::move(func));
+    if (ioWait_==true){
+        WakeUpIOSubmit();
+    }
+}
+
+void Scheduler::WakeUpIOSubmit(){
+    std::unique_lock<std::mutex> lock(ioWaitMutex_);
+    if (ioWait_==true){
+        ioWait_=false;
+        ioWaitCond_.notify_one();
+    }
+}
+
+void Scheduler::IOWaitThread(){
+    void* tk;
+    while(!stop_){
+        if(!ioEngine_->WaitResult(tk)){
+            std::cerr<<"io_uring wait error"<<std::endl;
+            continue;
+        }
+        auto task=static_cast<Task*>(tk);
+        AddTask({std::make_unique<Task>(task)});
+    }
+}
+
+void Scheduler::IOSubmitThread(){
+    while(!stop_){
+        auto ioFuncPtr=ioQueue_.pop();
+        if(ioFuncPtr==nullptr){
+            std::unique_lock<std::mutex> lock(ioWaitMutex_);
+            ioWait_=true;
+            ioFuncPtr=ioQueue_.pop();
+            if (ioFuncPtr!=nullptr){
+                ioWait_=false;
+            }else{
+                ioWaitCond_.wait(lock,[this]{return ioWait_==false;});
+                continue;
+            }
+        }
+        (*ioFuncPtr)(ioEngine_);
+
+        //
+    }
+}
