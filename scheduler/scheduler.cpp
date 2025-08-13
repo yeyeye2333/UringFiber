@@ -65,13 +65,13 @@ void Scheduler::WakeUpIOSubmit(){
 }
 
 void Scheduler::IOWaitThread(){
-    void* tk;
+    int64_t tk;
     while(!stop_){
         if(!ioEngine_->WaitResult(tk)){
             std::cerr<<"io_uring wait error"<<std::endl;
             continue;
         }
-        auto task=static_cast<Task*>(tk);
+        auto task=reinterpret_cast<Task*>(tk);
         AddTask({std::make_unique<Task>(task)});
     }
 }

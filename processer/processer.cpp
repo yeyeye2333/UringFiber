@@ -1,6 +1,6 @@
 #include "processer.hpp"
 
-Processer::Processer(std::shared_ptr<TaskPool> taskPool):taskPool_(taskPool){
+Processer::Processer(Scheduler* scheduler,std::shared_ptr<TaskPool> taskPool):scheduler_(scheduler),taskPool_(taskPool){
     id_=NewProcessorID();
     mainTask_=std::make_unique<Task>(TaskFunc);// 实际执行流以swap后为准
 }
@@ -115,6 +115,10 @@ void Processer::WakeUp(){
         status_=Status::running;
         cv_.notify_one();
     }
+}
+
+void Processer::AddToDo(std::function<void()> func){
+    LastScheToDos_.push_back(func);
 }
 
 // 对称协程调度

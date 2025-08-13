@@ -27,14 +27,14 @@ Context ctx1(func1, (void*)&ctx2, std::nullopt, 4*1024);
 int main() {
     swap1_2 = [&]() {
         std::cout << "Swapping from 1 to 2" << std::endl;
-        ctx1.swap(ctx1, ctx2);
+        ctx1.Swap(ctx1, ctx2);
     };
     swap2_1 = [&]() {
         std::cout << "Swapping from 2 to 1" << std::endl;
-        ctx2.swap(ctx2, ctx1);
+        ctx2.Swap(ctx2, ctx1);
     };
     std::cout << "Starting Context switch test" << std::endl;
-    ctx1.swap(ctx1, ctx2);// ctx1已被改为main函数上下文
+    ctx1.Swap(ctx1, ctx2);// ctx1已被改为main函数上下文
     std::cout << "Back to main Context" << std::endl;
     
     return 0;

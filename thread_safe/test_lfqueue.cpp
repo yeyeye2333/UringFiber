@@ -8,7 +8,7 @@ void TestLockFreeQueMultiPushPop() {
     LFQueue<int>  que;
     std::thread t1([&]() {
         for (int i = 0; i < TESTCOUNT * 100; i++) {
-            que.push(i);
+            que.push(std::make_unique<int>(i));
             // std::cout << "push data is " << i << std::endl;
             // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -17,7 +17,7 @@ void TestLockFreeQueMultiPushPop() {
 
     std::thread t4([&]() {
         for (int i = TESTCOUNT*100; i < TESTCOUNT * 200; i++) {
-            que.push(i);
+            que.push(std::make_unique<int>(i));
             // std::cout << "push data is " << i << std::endl;
             // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -70,7 +70,7 @@ void TestSimple(){
     LFQueue<int>  que;
     std::thread t1([&]() {
         std::cout<<std::this_thread::get_id()<<"push\n";
-            que.push(1);
+            que.push(std::make_unique<int>(1));
         });
     std::thread t2([&]() {
             std::this_thread::sleep_for(std::chrono::seconds(2));

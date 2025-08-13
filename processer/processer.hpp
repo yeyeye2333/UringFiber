@@ -7,8 +7,11 @@
 #include "lockfree_queue.hpp"
 #include "task_pool.hpp"
 
+class Scheduler;
+
 class Processer{
 private:
+    Scheduler* scheduler_=nullptr;
     static std::atomic<uint64_t> processorID_;
 
     std::shared_ptr<TaskPool> taskPool_;
@@ -39,15 +42,16 @@ private:
     static void AfterLastSche();
 
     static void TaskFunc(Task* arg);
-    static void SuspendTask();
 
     std::unique_ptr<Task>  Wait();
 
 public:
-    Processer(std::shared_ptr<TaskPool> taskPool);
+    Processer(Scheduler* scheduler,std::shared_ptr<TaskPool> taskPool);
     ~Processer();
 
     static Processer* & GetCurProcesser();
+    Task* GetRunningTask() const { return runningTask_.get(); }
+    Scheduler* GetScheduler() const { return scheduler_; }
 
     Processer(const Processer&) = delete;
     Processer(Processer&&) = delete;
@@ -64,6 +68,9 @@ public:
     void AddTask(std::list<std::unique_ptr<Task>> &&tasks);
     std::list<std::unique_ptr<Task>>  Steal(int num);
 
+    void AddToDo(std::function<void()> func);
+
+    static void SuspendTask();
     void Yield();
 };
 

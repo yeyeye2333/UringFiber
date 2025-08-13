@@ -58,15 +58,43 @@ bool io_uring_engine::Exec(std::function<void(io_uring_sqe*)>func,result &res,st
     return true;
 }
 
-bool io_uring_engine::Read(int fd,void* buf,size_t count,off_t offset,result res,struct __kernel_timespec timeout){
+bool io_uring_engine::Read(int fd,void* buf,size_t count,off_t offset,result& res,struct __kernel_timespec timeout){
     return Exec(std::bind(io_uring_prep_read,std::placeholders::_1,fd,buf,count,offset),res,timeout);
 }
 
-bool io_uring_engine::Write(int fd,const void* buf,size_t count,off_t offset,result res,struct __kernel_timespec timeout){
+bool io_uring_engine::Write(int fd,const void* buf,size_t count,off_t offset,result& res,struct __kernel_timespec timeout){
     return Exec(std::bind(io_uring_prep_write,std::placeholders::_1,fd,buf,count,offset),res,timeout);
 }
 
-bool io_uring_engine::WaitResult(void *&user_data){
+bool io_uring_engine::Recv(int fd,void* buf,size_t count,int flags,result& res,struct __kernel_timespec timeout={0,0}){
+    return Exec(std::bind(io_uring_prep_recv,std::placeholders::_1,fd,buf,count,flags),res,timeout);
+}
+
+bool io_uring_engine::Send(int fd,const void* buf,size_t count,int flags,result& res,struct __kernel_timespec timeout={0,0}){
+    return Exec(std::bind(io_uring_prep_send,std::placeholders::_1,fd,buf,count,flags),res,timeout);
+}
+
+bool io_uring_engine::Recvmsg(int fd,struct msghdr* msg,int flags,result& res,struct __kernel_timespec timeout={0,0}){
+    return Exec(std::bind(io_uring_prep_recvmsg,std::placeholders::_1,fd,msg,flags),res,timeout);
+}
+
+bool io_uring_engine::Sendmsg(int fd,const struct msghdr* msg,int flags,result& res,struct __kernel_timespec timeout={0,0}){
+    return Exec(std::bind(io_uring_prep_sendmsg,std::placeholders::_1,fd,msg,flags),res,timeout);
+}
+
+bool io_uring_engine::Connect(int fd,const struct sockaddr* addr,socklen_t addrlen,result& res,struct __kernel_timespec timeout={0,0}){
+    return Exec(std::bind(io_uring_prep_connect,std::placeholders::_1,fd,addr,addrlen),res,timeout);
+}
+
+bool io_uring_engine::Accept(int fd,struct sockaddr* addr,socklen_t* addrlen,int flags,result& res,struct __kernel_timespec timeout={0,0}){
+    return Exec(std::bind(io_uring_prep_accept,std::placeholders::_1,fd,addr,addrlen,flags),res,timeout);
+}
+
+bool io_uring_engine::TimeOut(result& res,struct __kernel_timespec &timeout){
+    return Exec(std::bind(io_uring_prep_timeout,std::placeholders::_1,&timeout,0,IORING_TIMEOUT_ETIME_SUCCESS),res,__kernel_timespec{0,0});
+}
+
+bool io_uring_engine::WaitResult(int64_t &user_data){
     io_uring_cqe* cqe;
     if(WaitCqe(&cqe)<0){
         return false;
@@ -77,7 +105,7 @@ bool io_uring_engine::WaitResult(void *&user_data){
     if (data->type==TIMEOUT){
         switch (cqe->res){
         case -ETIME:
-            *(data->res.ret)=EAGAIN;
+            data->res.ret=EAGAIN;
             break;
 
         case -ENOENT:
@@ -89,7 +117,7 @@ bool io_uring_engine::WaitResult(void *&user_data){
             return false;
         }
     }else{
-        *(data->res.ret)=-cqe->res;
+        data->res.ret=cqe->res;
     }
 
     user_data=data->res.user_data;
