@@ -23,9 +23,9 @@ private:
     std::deque<std::function<void()>> tempTasks_;
 
 private:
-    // LoadBalance()
+    void LoadBalance();
 
-    // WakeUpIOWait()
+    void WakeUpIOWait();
     void WakeUpIOSubmit();
     void IOWaitThread();
     void IOSubmitThread();// 同时负责负载均衡
@@ -43,7 +43,7 @@ public:
     Scheduler& operator=(Scheduler const&) = delete;
     Scheduler& operator=(Scheduler &&) = delete;
 
-    void Start(int processer_num=1);
+    void Start(int processer_num=4);
     void Stop();
 
     void AddTask(std::function<void()> func);

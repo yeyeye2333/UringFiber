@@ -141,6 +141,12 @@ void Processer::Yield(){
         break;
     }
 
+
+    // 确保stop后不会再执行新协程
+    if (stop_==true){
+        Task::Swap(*cur_task,*mainTask_);
+    }
+
     runningTask_=runnableQueue_.pop();
     if(runningTask_!=nullptr){
         // swap to runningTask_
